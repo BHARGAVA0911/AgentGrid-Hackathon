@@ -7,7 +7,6 @@ from selenium.webdriver.support import expected_conditions as EC
 from langchain_google_genai import ChatGoogleGenerativeAI
 import google.generativeai as genai
 import time
-import re
 
 GOOGLE_GEMINI_KEY = "AIzaSyAMzDZ-wpZNfylJbgaehOpor7Jb1keI3ZA"
 llm = ChatGoogleGenerativeAI(model="gemini-pro", google_api_key=GOOGLE_GEMINI_KEY)
@@ -110,7 +109,7 @@ def poll_for_new_articles(murl, driver, existing_df):
                 descriptions = []
 
                 # Extract articles (assuming extract_articles fills these lists)
-                extract_articles()
+                extract_articles(driver)
 
                 # Create a temporary DataFrame for the new data
                 new_data = pd.DataFrame({
@@ -121,9 +120,11 @@ def poll_for_new_articles(murl, driver, existing_df):
                     'Description': descriptions
                 })
 
-                # Append the new data to the existing DataFrame
-                existing_df = pd.concat([existing_df, new_data], ignore_index=True)
-
+                if existing_df is None:
+                    existing_df = new_data
+                else:
+                    existing_df = pd.concat([existing_df, new_data], ignore_index=True) # Append the new data to the existing DataFrame
+                
         except Exception as e:
             print(f"Polling error: {e}")
             break
@@ -133,7 +134,6 @@ def poll_for_new_articles(murl, driver, existing_df):
         time.sleep(3600)  # Wait for an hour before polling again
 
     return existing_df  # Return the updated DataFrame
-
 
 def generate_article(title, description):
     prompt = (
@@ -216,7 +216,6 @@ def format_html_content(content, title, image_url):
     """
     return formatted_content
 
-
 def convert_df_to_csv(df):
     csv = df.to_csv(index=False)
     return csv
@@ -245,18 +244,50 @@ if options == "Home":
     with st.spinner("Scraping Data.."):
         st.session_state.articles = scrape_articles(url)
 
-    # Display articles and generate article content
+    # Initialize generated articles list if not already present
     if 'generated_articles' not in st.session_state:
         st.session_state.generated_articles = []
 
-    search_generated = st.text_input("Search generated articles", "")
-    
+    search_generated = st.text_input("Search for Topics", "")
+
+    # Display search results if a search term is provided
     if search_generated:
         search_filtered = [ga for ga in st.session_state.generated_articles if search_generated.lower() in ga['title'].lower()]
-    else:
-        search_filtered = st.session_state.generated_articles
+        if search_filtered:
+            st.subheader("Search Results")
+            for gen_article in search_filtered:
+                original_article = next((a for a in st.session_state.articles.to_dict(orient='records') if a['Title'] == gen_article['title']), None)
+                st.subheader(f"{original_article['Title']}")
+                st.write(f"**Author:** {original_article['Author']}")
+                st.write(f"**Date:** {original_article['Date']}")
+                st.write(f"**Link:** {original_article['Link']}")
+                st.write(f"**Description:** {original_article['Description']}")
+                st.image(original_article['Image'], width=300)
+                generated_article = generate_article(
+                        title=original_article['Title'],
+                        description=original_article['Description'],
+                    )     
 
-    if not st.session_state.articles.empty:
+                st.write(f"**Title:** {gen_article['title']}")
+                st.write(f"**Generated Content:**")
+                st.markdown(format_html_content(generated_article, gen_article['title'], original_article['Image']), unsafe_allow_html=True)
+                st.write("---")
+                break
+        else:
+            st.write("No search results found.")
+
+    # Display articles if available
+    if 'articles' not in st.session_state or st.session_state.articles.empty:
+        st.write("No articles found for the selected time period.")
+    else:
+        num_articles = len(st.session_state.articles)
+        st.write(f"Number of articles found: {num_articles}")
+        st.download_button(
+            label="Download CSV",
+            data=convert_df_to_csv(st.session_state.articles),
+            file_name='articles.csv',
+            mime='text/csv',
+        )
         for idx, article in st.session_state.articles.iterrows():
             st.subheader(f"{idx + 1}: {article['Title']}")
             st.write(f"**Author:** {article['Author']}")
@@ -268,37 +299,19 @@ if options == "Home":
             if st.button(f"Generate Article for '{article['Title']}'", key=f"generate_{idx}"):
                 with st.spinner(f"Generating article for '{article['Title']}'..."):
                     generated_article = generate_article(
-                    title=article['Title'],
-                    description=article['Description'],
+                        title=article['Title'],
+                        description=article['Description'],
                     )         
-        
+                
                     formatted_article = format_html_content(generated_article, article['Title'], article['Image'])
                     st.markdown(formatted_article, unsafe_allow_html=True)
-        
-                    # Store the generated article
-                    st.session_state.generated_articles.append({
-                    'title': article['Title'],
-                    'content': generated_article
-                    })
-
-                    
+                
                     # Store the generated article
                     st.session_state.generated_articles.append({
                         'title': article['Title'],
                         'content': generated_article
                     })
 
-    # Display generated articles
-    if search_generated:
-        st.subheader("Search Results")
-        for idx, gen_article in enumerate(search_filtered):
-            st.write(f"**Title:** {gen_article['title']}")
-            st.write(f"**Generated Content:**")
-            st.markdown(format_html_content(gen_article['content']), unsafe_allow_html=True)
-            st.write("---")
-            
 elif options == "About":
     st.header("About This App")
     st.write("This app uses AI to generate detailed articles based on recent research.")
-
-
