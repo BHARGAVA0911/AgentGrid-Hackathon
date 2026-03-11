@@ -20,6 +20,8 @@ import time
 import os
 
 GOOGLE_GEMINI_KEY = os.getenv("GEMINI_API_KEY")
+if GOOGLE_GEMINI_KEY is None:
+    raise ValueError("GEMINI_API_KEY is not set in environment variables")
 llm = ChatGoogleGenerativeAI(model="gemini-pro", google_api_key=GOOGLE_GEMINI_KEY)
 
 titles = []
