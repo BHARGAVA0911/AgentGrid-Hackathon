@@ -171,7 +171,8 @@ def generate_article(title, description):
         f"Include Introduction, different sections, different applications, tables, and conclusion:\n\n"
     )
 
-    response_text = llm.predict(text=prompt)
+    response = llm.invoke(prompt)
+    response_text = response.content
     return response_text
 
 def format_html_content(content, title, image_url):
