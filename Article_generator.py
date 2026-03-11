@@ -9,15 +9,14 @@ structured long-form articles using Google's Gemini LLM.
 
 Author: Bhargava BS
 """
-import streamlit as st
-import pandas as pd
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from langchain_google_genai import ChatGoogleGenerativeAI
-import time
 import os
+import time
+import requests
+import pandas as pd
+import streamlit as st
+from bs4 import BeautifulSoup
+from langchain_google_genai import ChatGoogleGenerativeAI
+
 
 GOOGLE_GEMINI_KEY = os.getenv("GEMINI_API_KEY")
 if GOOGLE_GEMINI_KEY is None:
@@ -33,31 +32,46 @@ images = []
 generated_articles = []
 
 def scrape_articles(url):
-    chrome_options = webdriver.ChromeOptions()
-    chrome_options.add_argument('--headless')
-    chrome_options.add_argument('--no-sandbox')
-    chrome_options.add_argument('--disable-dev-shm-usage')
-    driver = webdriver.Chrome(options=chrome_options)
+    titles = []
+    links = []
+    dates = []
+    authors = []
+    descriptions = []
+    images = []
 
-    driver.get(url)
-    wait = WebDriverWait(driver, 10)
-    wait.until(EC.presence_of_element_located((By.CLASS_NAME, 'faceted-search-results')))
+    response = requests.get(url)
+    soup = BeautifulSoup(response.text, "html.parser")
 
-    extract_articles(driver)
-    pagenation(driver)    
+    articles = soup.select("article")
 
-    driver.quit()
+    for article in articles:
+        title_tag = article.select_one("h3.card__heading a")
 
-    data = {
-        'Title': titles,
-        'Link': links,
-        'Date': dates,
-        'Author': authors,
-        'Description': descriptions,
-        'Image': images
-    }
+        if title_tag:
+            titles.append(title_tag.text.strip())
+            links.append(title_tag["href"])
 
-    df = pd.DataFrame(data)
+        date_tag = article.select_one("time")
+        dates.append(date_tag.text.strip() if date_tag else "")
+
+        author_tag = article.select_one("span.card__byline")
+        authors.append(author_tag.text.strip() if author_tag else "")
+
+        desc_tag = article.select_one("p")
+        descriptions.append(desc_tag.text.strip() if desc_tag else "")
+
+        img_tag = article.select_one("img")
+        images.append(img_tag["src"] if img_tag else "")
+
+    df = pd.DataFrame({
+        "Title": titles,
+        "Link": links,
+        "Date": dates,
+        "Author": authors,
+        "Description": descriptions,
+        "Image": images
+    })
+
     return df
 
 def extract_articles(driver):
