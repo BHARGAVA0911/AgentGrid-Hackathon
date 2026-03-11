@@ -1,3 +1,15 @@
+"""
+Agentic AI Research Article Generator
+
+This project was developed during the AgentGrid Pulse Hackathon
+at Prodigal AI and won the competition.
+
+The system scrapes AI research articles and generates
+structured long-form articles using Google's Gemini LLM.
+
+Author: Bhargava BS
+"""
+
 import streamlit as st
 import pandas as pd
 from selenium import webdriver
