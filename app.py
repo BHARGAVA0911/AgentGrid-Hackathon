@@ -25,7 +25,7 @@ from selenium.webdriver.chrome.service import Service
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 llm = ChatGoogleGenerativeAI(
-    model="gemini-pro",
+    model=""gemini-1.5-flash"",
     google_api_key=GEMINI_API_KEY
 )
 
