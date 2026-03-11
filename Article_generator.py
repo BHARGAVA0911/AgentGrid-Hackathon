@@ -7,8 +7,9 @@ from selenium.webdriver.support import expected_conditions as EC
 from langchain_google_genai import ChatGoogleGenerativeAI
 import google.generativeai as genai
 import time
+import os
 
-GOOGLE_GEMINI_KEY = "AIzaSyAMzDZ-wpZNfylJbgaehOpor7Jb1keI3ZA"
+GOOGLE_GEMINI_KEY = os.getenv("GEMINI_API_KEY")
 llm = ChatGoogleGenerativeAI(model="gemini-pro", google_api_key=GOOGLE_GEMINI_KEY)
 
 titles = []
