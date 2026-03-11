@@ -16,7 +16,6 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from langchain_google_genai import ChatGoogleGenerativeAI
-import google.generativeai as genai
 import time
 import os
 
